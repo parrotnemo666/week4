@@ -126,7 +126,7 @@ print("網絡結構: 2輸入 → 2隱藏層(ReLU) → 2輸出(Linear)")
 print("損失函數: MSE (Mean Squared Error)")
 print()
 
-# 網絡權重 (從圖中讀取)
+# 網絡權重 
 weights_ih_regression = [
     [0.5, 0.6],    # X1 → [H1, H2]
     [0.2, -0.6]    # X2 → [H1, H2]

@@ -114,7 +114,7 @@ def main():
         [0.3, 1.25]    # Bias → [H11, H12]
     ],
 
-    # Hidden layer 1 → Hidden layer 2 (hidden2 只有一個節點 H21)
+    # Hidden layer 1 → Hidden layer 2 
     [
         [0.6],         # H11 → [H21]
         [-0.8],        # H12 → [H21]
@@ -124,8 +124,8 @@ def main():
     # Hidden layer 2 → Output layer (注意 H22 不存在)
     [
         [0.5, -0.4],   # H21 → [O1, O2]
-        # （如果 H22 不存在，則不放 H22 的列）
-        [0.2, 0.5]     # Bias → [O1, O2]  <- 你表格中的 Bias 權重
+      
+        [0.2, 0.5]     # Bias → [O1, O2] 
     ]
 ]
     
