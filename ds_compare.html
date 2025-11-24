@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資料結構全方位實驗室 (Data Structure Lab)</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #252525;
+            --text-main: #f0f0f0;
+            --text-sub: #aaa;
+            --accent: #4ECDC4;
+            --accent-hover: #3dbdb5;
+            --danger: #FF6B6B;
+            --danger-hover: #e05a5a;
+            --highlight: #FFE66D;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 { margin-bottom: 5px; color: var(--accent); }
+        p.subtitle { color: var(--text-sub); margin-bottom: 20px; text-align: center; font-size: 0.9rem; }
+        
+        /* 導覽列 */
+        .nav-tabs {
+            display: flex;
+            background: #333;
+            border-radius: 25px;
+            padding: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .nav-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .nav-btn.active {
+            background: var(--accent);
+            color: #1a1a1a;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Canvas 容器 */
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--card-bg);
+            margin-bottom: 20px;
+        }
+        canvas { display: block; background-color: var(--card-bg); }
+
+        /* 控制按鈕 */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-add { background-color: var(--accent); color: #1a1a1a; }
+        .btn-add:hover { background-color: var(--accent-hover); }
+        .btn-remove { background-color: var(--danger); }
+        .btn-remove:hover { background-color: var(--danger-hover); }
+
+        /* 資訊卡片區域 */
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .info-card {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid var(--accent);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .info-card:hover { transform: translateY(-3px); }
+        .info-card h3 { margin: 0 0 15px 0; color: var(--accent); display: flex; justify-content: space-between; }
+        .info-card .badge { font-size: 0.8rem; background: #444; padding: 2px 8px; border-radius: 4px; color: #ddd; }
+        .info-row { margin-bottom: 10px; display: flex; align-items: flex-start; }
+        .info-label { width: 90px; font-weight: bold; color: #888; flex-shrink: 0; }
+        .info-val { color: #ddd; line-height: 1.4; }
+        .stars { color: var(--highlight); }
+
+    </style>
+</head>
+<body>
+
+    <h1>資料結構視覺化實驗室</h1>
+    <p class="subtitle">選擇不同模式，觀察運作原理與效能差異</p>
+
+    <!-- 導覽列 -->
+    <div class="nav-tabs">
+        <button class="nav-btn active" onclick="switchMode('stack-queue')">Stack & Queue</button>
+        <button class="nav-btn" onclick="switchMode('array-ll')">Array & Linked List</button>
+        <button class="nav-btn" onclick="switchMode('tree')">Binary Tree (BST)</button>
+    </div>
+
+    <!-- 畫布 -->
+    <div class="canvas-container">
+        <canvas id="dsCanvas" width="800" height="450"></canvas>
+    </div>
+
+    <!-- 控制按鈕 -->
+    <div class="controls">
+        <button class="btn btn-add" onclick="currentScene.add()">
+            <span>+ 加入資料 (Add)</span>
+        </button>
+        <button class="btn btn-remove" onclick="currentScene.remove()">
+            <span>- 移除資料 (Remove)</span>
+        </button>
+    </div>
+
+    <!-- 資訊卡片區 (動態內容) -->
+    <div id="infoContainer" class="info-panel">
+        <!-- JS 會在這裡填入內容 -->
+    </div>
+
+<script>
+    // === 1. 資料庫 (User 提供的內容) ===
+    const INFO_DB = {
+        stack: {
+            title: "Stack (堆疊)",
+            access: "只存取頂端",
+            insert: "只在頂端操作",
+            analogy: "疊盤子",
+            usage: "復原功能 (Undo)、括號對稱檢查"
+        },
+        queue: {
+            title: "Queue (佇列)",
+            access: "只存取頭尾",
+            insert: "只在頭尾操作",
+            analogy: "排隊買票",
+            usage: "印表機任務排程、資料緩衝區"
+        },
+        array: {
+            title: "Array (陣列)",
+            access: "<span class='stars'>⭐⭐⭐⭐⭐</span> (超快，直接算位置)",
+            insert: "<span class='stars'>⭐⭐</span> (慢，中間插入需全體搬移)",
+            analogy: "有編號的置物櫃",
+            usage: "資料數量固定、頻繁查詢"
+        },
+        ll: {
+            title: "Linked List (鏈結串列)",
+            access: "<span class='stars'>⭐⭐</span> (慢，需從頭走訪)",
+            insert: "<span class='stars'>⭐⭐⭐⭐⭐</span> (快，改指標即可)",
+            analogy: "尋寶遊戲 (拿紙條找下一站)",
+            usage: "資料數量不固定、頻繁插入刪除"
+        },
+        tree: {
+            title: "Tree (二元搜尋樹 BST)",
+            access: "<span class='stars'>⭐⭐⭐⭐</span> (快，每次排除一半)",
+            insert: "<span class='stars'>⭐⭐⭐⭐</span> (快，類似猜數字)",
+            analogy: "公司組織圖、資料夾結構",
+            usage: "搜尋引擎、資料庫索引"
+        }
+    };
+
+    // === 2. 系統核心 ===
+    const canvas = document.getElementById('dsCanvas');
+    const ctx = canvas.getContext('2d');
+    let mode = 'stack-queue';
+    let animationId;
+
+    // 輔助繪圖函式
+    function drawArrow(ctx, x1, y1, x2, y2, color = '#555') {
+        const headlen = 10; 
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const angle = Math.atan2(dy, dx);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+
+    function renderInfoCards(keys) {
+        const container = document.getElementById('infoContainer');
+        container.innerHTML = '';
+        keys.forEach(key => {
+            const data = INFO_DB[key];
+            const card = document.createElement('div');
+            card.className = 'info-card';
+            // 根據不同類型給不同顏色的邊框
+            if(key === 'stack' || key === 'array') card.style.borderLeftColor = '#FF6B6B';
+            if(key === 'queue' || key === 'll') card.style.borderLeftColor = '#4ECDC4';
+            if(key === 'tree') card.style.borderLeftColor = '#FFE66D';
+
+            card.innerHTML = `
+                <h3>${data.title}</h3>
+                <div class="info-row"><div class="info-label">存取速度</div><div class="info-val">${data.access}</div></div>
+                <div class="info-row"><div class="info-label">插入/刪除</div><div class="info-val">${data.insert}</div></div>
+                <div class="info-row"><div class="info-label">生活比喻</div><div class="info-val">${data.analogy}</div></div>
+                <div class="info-row"><div class="info-label">適合場景</div><div class="info-val">${data.usage}</div></div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // === 3. 場景邏輯 (Scenes) ===
+
+    // --- Scene 1: Stack & Queue ---
+    const sceneStackQueue = {
+        stackItems: [],
+        queueItems: [],
+        animItems: [],
+        counter: 1,
+
+        init() { 
+            this.stackItems = []; 
+            this.queueItems = []; 
+            this.counter = 1;
+            renderInfoCards(['stack', 'queue']);
+        },
+
+        add() {
+            if (this.stackItems.length >= 5) return alert("空間已滿 (Full)");
+            const val = this.counter++;
+            // Stack
+            this.stackItems.push({ 
+                val, x: 200, y: -50, tx: 200, ty: 380 - this.stackItems.length * 55, type: 'stack', color: '#FF6B6B' 
+            });
+            // Queue
+            this.queueItems.push({ 
+                val, x: -50, y: 250, tx: 450 + this.queueItems.length * 55, ty: 250, type: 'queue', color: '#4ECDC4' 
+            });
+        },
+
+        remove() {
+            if (this.stackItems.length === 0) return;
+            // Stack Pop
+            const s = this.stackItems.pop();
+            s.ty = -100; // Fly up
+            s.fading = true;
+            this.animItems.push(s);
+            
+            // Queue Dequeue
+            const q = this.queueItems.shift();
+            q.tx = 900; // Fly right
+            q.fading = true;
+            this.animItems.push(q);
+            
+            // Shift Queue
+            this.queueItems.forEach((item, i) => {
+                item.tx = 450 + i * 55;
+            });
+        },
+
+        draw() {
+            // Labels
+            ctx.fillStyle = '#888'; ctx.font = "20px Arial"; ctx.textAlign = "center";
+            ctx.fillText("Stack (堆疊)", 200, 430);
+            ctx.fillText("Queue (佇列)", 600, 430);
+
+            // Draw Stack Container
+            ctx.strokeStyle = '#555'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(150, 100); ctx.lineTo(150, 400); ctx.lineTo(250, 400); ctx.lineTo(250, 100); ctx.stroke();
+
+            // Draw Queue Container
+            ctx.beginPath(); ctx.moveTo(400, 200); ctx.lineTo(800, 200); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(400, 300); ctx.lineTo(800, 300); ctx.stroke();
+
+            // Update & Draw Items
+            const all = [...this.stackItems, ...this.queueItems, ...this.animItems];
+            all.forEach(p => {
+                // Physics
+                p.x += (p.tx - p.x) * 0.15;
+                p.y += (p.ty - p.y) * 0.15;
+                
+                // Draw
+                ctx.fillStyle = p.color;
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(p.x - 20, p.y - 20, 40, 40, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = 'white'; ctx.fillText(p.val, p.x, p.y + 7);
+            });
+
+            // Cleanup
+            this.animItems = this.animItems.filter(p => p.y > -100 && p.x < 900);
+        }
+    };
+
+    // --- Scene 2: Array & Linked List ---
+    const sceneArrayLL = {
+        arrData: [10, 20, 30, 40],
+        llData: [{val:10, id:1}, {val:20, id:2}, {val:30, id:3}],
+        nextId: 4,
+        message: "",
+
+        init() { 
+            this.arrData = [10, 20, 30, 40];
+            this.llData = [{val:10, id:1}, {val:20, id:2}, {val:30, id:3}];
+            renderInfoCards(['array', 'll']);
+        },
+
+        add() {
+            if (this.arrData.length >= 7) return alert("陣列固定空間已滿！需重新配置記憶體。");
+            
+            // Array Insert at index 1 (simulation)
+            this.message = "插入操作：Array 需全體搬移，Linked List 僅改指標";
+            
+            // Visual Logic: Array insert at index 1
+            // We won't do complex animation, just immediate for clarity in this mode
+            this.arrData.splice(1, 0, Math.floor(Math.random()*90)+10);
+
+            // LL Insert at index 1
+            this.llData.splice(1, 0, {val: Math.floor(Math.random()*90)+10, id: this.nextId++});
+        },
+
+        remove() {
+            if(this.arrData.length <= 2) return;
+            this.message = "刪除操作：Array 需搬移填補空缺";
+            this.arrData.splice(1, 1);
+            this.llData.splice(1, 1);
+        },
+
+        draw() {
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#f0f0f0"; ctx.font = "18px Arial";
+            ctx.fillText("Array (連續記憶體): 索引存取快，插入需搬移", 50, 50);
+            
+            // Draw Array
+            const startX = 50, startY = 80;
+            for(let i=0; i<8; i++) { // Max size 8
+                const val = this.arrData[i];
+                const x = startX + i * 60;
+                
+                // Box
+                ctx.strokeStyle = '#888';
+                ctx.fillStyle = val ? '#FF6B6B' : '#333'; // Red if data, dark if empty
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, startY, 50, 50);
+                ctx.fillRect(x, startY, 50, 50);
+                
+                // Index
+                ctx.fillStyle = '#888'; ctx.font = "12px Arial";
+                ctx.fillText(i, x + 20, startY + 70);
+
+                if (val) {
+                    ctx.fillStyle = 'white'; ctx.font = "16px Arial";
+                    ctx.fillText(val, x + 15, startY + 30);
+                }
+            }
+
+            // Draw Linked List
+            ctx.fillStyle = "#f0f0f0"; ctx.font = "18px Arial";
+            ctx.fillText("Linked List (分散記憶體): 插入快，搜尋需遍歷", 50, 250);
+            
+            let lx = 50, ly = 300;
+            this.llData.forEach((node, i) => {
+                // Node Circle
+                ctx.fillStyle = '#4ECDC4';
+                ctx.beginPath(); ctx.arc(lx + 25, ly + 25, 20, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#1a1a1a'; ctx.fillText(node.val, lx + 15, ly + 30);
+
+                // Arrow
+                if (i < this.llData.length - 1) {
+                    drawArrow(ctx, lx + 45, ly + 25, lx + 100, ly + 25, '#fff');
+                } else {
+                    ctx.fillStyle = '#888'; ctx.fillText("null", lx + 60, ly + 30);
+                }
+                lx += 100;
+            });
+
+            // Message
+            if (this.message) {
+                ctx.fillStyle = '#FFE66D';
+                ctx.fillText(this.message, 50, 400);
+            }
+        }
+    };
+
+    // --- Scene 3: Binary Search Tree ---
+    class TreeNode {
+        constructor(val) { this.val = val; this.left = null; this.right = null; this.x = 0; this.y = 0; }
+    }
+
+    const sceneTree = {
+        root: null,
+        animNode: null, // The node currently traveling
+
+        init() { 
+            this.root = null; 
+            this.animNode = null;
+            // Seed some data
+            [50, 30, 70, 20, 40, 60, 80].forEach(v => this.insertLogic(this.root, v));
+            renderInfoCards(['tree']);
+        },
+
+        add() {
+            const val = Math.floor(Math.random() * 90) + 5;
+            if (!this.root) {
+                this.root = new TreeNode(val);
+            } else {
+                this.insertLogic(this.root, val);
+            }
+        },
+
+        remove() {
+            this.root = null; // Clear for simplicity
+            this.init();
+        },
+
+        insertLogic(node, val) {
+            if (!node) {
+                this.root = new TreeNode(val);
+                return;
+            }
+            if (val < node.val) {
+                if (!node.left) node.left = new TreeNode(val);
+                else this.insertLogic(node.left, val);
+            } else {
+                if (!node.right) node.right = new TreeNode(val);
+                else this.insertLogic(node.right, val);
+            }
+        },
+
+        drawNode(node, x, y, level) {
+            if (!node) return;
+            node.x = x; node.y = y;
+
+            // Draw connections first
+            const offset = 180 / (level + 1);
+            if (node.left) {
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - offset, y + 60); 
+                ctx.strokeStyle = '#555'; ctx.stroke();
+                this.drawNode(node.left, x - offset, y + 60, level + 1);
+            }
+            if (node.right) {
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + offset, y + 60); 
+                ctx.strokeStyle = '#555'; ctx.stroke();
+                this.drawNode(node.right, x + offset, y + 60, level + 1);
+            }
+
+            // Draw Node
+            ctx.fillStyle = '#FFE66D';
+            ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#bba500'; ctx.stroke();
+            ctx.fillStyle = '#1a1a1a'; ctx.textAlign = "center"; 
+            ctx.font = "14px Arial"; ctx.fillText(node.val, x, y + 5);
+        },
+
+        draw() {
+            ctx.fillStyle = '#f0f0f0'; ctx.font = "18px Arial"; ctx.textAlign = "center";
+            ctx.fillText("Binary Search Tree: 小的放左邊，大的放右邊", 400, 30);
+            
+            if(this.root) this.drawNode(this.root, 400, 80, 1);
+            else {
+                ctx.fillStyle = '#666';
+                ctx.fillText("空樹 (Empty Tree)", 400, 200);
+            }
+        }
+    };
+
+    // === 4. 主控制邏輯 ===
+    let currentScene = sceneStackQueue;
+    sceneStackQueue.init();
+
+    function switchMode(newMode) {
+        mode = newMode;
+        
+        // UI Update
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        const btnIndex = newMode === 'stack-queue' ? 0 : newMode === 'array-ll' ? 1 : 2;
+        document.querySelectorAll('.nav-btn')[btnIndex].classList.add('active');
+
+        // Scene Switch
+        if (mode === 'stack-queue') currentScene = sceneStackQueue;
+        else if (mode === 'array-ll') currentScene = sceneArrayLL;
+        else if (mode === 'tree') currentScene = sceneTree;
+
+        currentScene.init();
+    }
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        currentScene.draw();
+        requestAnimationFrame(loop);
+    }
+    loop();
+
+</script>
+</body>
+</html>
